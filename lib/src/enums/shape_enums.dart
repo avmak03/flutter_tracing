@@ -1,43 +1,4 @@
 
-enum ArabicLetters {
-  gem,
-  sen,
-  lam,
-  ra2,
-  ba2,
-  fa2,
-  mem,
-  ein,
-  tah,
-  alf,
-  kha2,
-  theh,
-  sad,
-  ya2,
-  ha2,
-  dal,
-  tha2,
-  waw,
-  // kaf el be hamza
-  kaf,
-  zen,
-  // vilot
-
-  ta2,
-  ghen,
-  dad,
-  zal,
-
-  shen,
-  // qaf el be no2teten
-  qaf,
-
-  non,
-
-  heh1,
-  heh2,
-}
-
 enum MathShapes {
   circle,
   triangle1,
