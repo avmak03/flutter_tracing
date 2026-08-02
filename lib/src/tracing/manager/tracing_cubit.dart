@@ -98,9 +98,8 @@ class TracingCubit extends Cubit<TracingState> {
       final parsed = parseSvgPath(letterModel.letterPath);
       parsedLetterPaths.add(parsed);
 
-      if (letterModel.isSpace) continue; // don't let a blank space's
-      // (possibly degenerate) bounds skew the shared scale.
-
+      // isSpace is just "space follows this letter" — it's a real glyph
+      // and belongs in the shared-scale calculation like any other.
       final bounds = parsed.getBounds();
       if (bounds.height > tallestGlyphHeight) {
         tallestGlyphHeight = bounds.height;
@@ -125,19 +124,18 @@ class TracingCubit extends Cubit<TracingState> {
       final letterModel = state.traceLetter[i];
       final parsedPath = parsedLetterPaths[i];
 
-      final Size perLetterViewSize;
-      if (letterModel.isSpace) {
-        // No visible glyph to measure — reserve a modest placeholder
-        // footprint; the actual word/letter gap on screen is controlled
-        // by `letterSpacing` / `wordSpacing` at the widget layer, not here.
-        perLetterViewSize = Size(targetGlyphHeight * 0.5, targetGlyphHeight);
-      } else {
-        final bounds = parsedPath.getBounds();
-        perLetterViewSize = Size(
-          bounds.width * screenScale,
-          bounds.height * screenScale,
-        );
-      }
+      // `isSpace` marks a real letter that happens to be followed by a
+      // space in the word string — it is NOT a blank/placeholder glyph.
+      // It carries real letterPath/dottedPath/indexPath/stroke data just
+      // like any other letter; the only thing that reads this flag is
+      // the widget layer, which adds extra margin after this letter's
+      // box (see wordSpacing in tracing_word_game.dart). So it must be
+      // sized and transformed exactly like every other letter here.
+      final bounds = parsedPath.getBounds();
+      final Size perLetterViewSize = Size(
+        bounds.width * screenScale,
+        bounds.height * screenScale,
+      );
 
       final dottedIndexPath = parseSvgPath(letterModel.indexPath);
       final dottedPath = parseSvgPath(letterModel.dottedPath);
