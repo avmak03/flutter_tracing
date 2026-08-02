@@ -6,17 +6,45 @@ import 'package:tracing_game/tracing_game.dart';
 
 
 class TracingCharsGame extends StatefulWidget {
-  const TracingCharsGame({super.key, required this.traceShapeModel,
-    this.loadingIndictor=const CircularProgressIndicator(), 
-        this.showAnchor=true,
-          this.onTracingUpdated,
-          this.onGameFinished,
-          this.onCurrentTracingScreenFinished,
-   });
+  const TracingCharsGame({
+    super.key,
+    required this.traceShapeModel,
+    this.loadingIndictor = const CircularProgressIndicator(),
+    this.showAnchor = true,
+    this.onTracingUpdated,
+    this.onGameFinished,
+    this.onCurrentTracingScreenFinished,
+    this.letterSpacing = 16,
+    this.targetGlyphHeight = 200,
+    this.anchorAssetPath,
+    this.anchorBuilder,
+  });
   final List<TraceCharsModel> traceShapeModel;
   final Widget loadingIndictor;
-    final bool showAnchor;
+  final bool showAnchor;
 
+  /// Horizontal gap, in logical pixels, between adjacent letter boxes.
+  /// Since each letter's box now reflects its true scaled width instead
+  /// of a fixed square, this is real inter-letter spacing, not leftover
+  /// empty space inside an oversized box.
+  final double letterSpacing;
+
+  /// The tallest glyph on a screen is scaled to this height, and every
+  /// other glyph on that screen shares the same scale factor — see
+  /// TracingCubit.targetGlyphHeight for the full rationale.
+  final double targetGlyphHeight;
+
+  /// Asset path for the "pointing finger" anchor image shown at the
+  /// start of the active letter's stroke. Defaults to the package's
+  /// bundled image if left null. Must be a path resolvable via
+  /// `Image.asset` from YOUR app (i.e. a path under your own pubspec
+  /// assets), not the package's asset namespace.
+  final String? anchorAssetPath;
+
+  /// Full control over the anchor visual — if provided, this takes
+  /// priority over [anchorAssetPath]. Useful if you want an animated
+  /// widget (e.g. a bobbing mascot hand) instead of a static image.
+  final Widget Function(BuildContext context)? anchorBuilder;
 
 final Future<void> Function(int index)? onTracingUpdated;
 final  Future<void> Function(int index)? onGameFinished;
@@ -33,8 +61,20 @@ class _TracingCharsGameState extends State<TracingCharsGame> {
   void initState() {
     super.initState();
     tracingCubit = TracingCubit(
-      stateOfTracing:StateOfTracing.chars ,
+      stateOfTracing: StateOfTracing.chars,
       traceShapeModel: widget.traceShapeModel,
+      targetGlyphHeight: widget.targetGlyphHeight,
+    );
+  }
+
+  Widget _buildAnchor(BuildContext context) {
+    if (widget.anchorBuilder != null) {
+      return widget.anchorBuilder!(context);
+    }
+    return Image.asset(
+      widget.anchorAssetPath ??
+          'packages/tracing_game/assets/images/position_2_finger.png',
+      height: 50,
     );
   }
 
@@ -78,21 +118,21 @@ class _TracingCharsGameState extends State<TracingCharsGame> {
                   child: Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      // mainAxisAlignment: MainAxisAlignment.s,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: List.generate(
                         state.letterPathsModels.length,
                         (index) {
-                          return SizedBox(
-                            height:
-                                state.letterPathsModels[index].viewSize.width,
-                            width: state
-                                .letterPathsModels[index].viewSize.height,
-                        
-                            // color: Colors.green,
-                            child: FittedBox(
-                              fit: BoxFit.contain,
-                              child: GestureDetector(
+                          final letterModel = state.letterPathsModels[index];
+                          final isLast =
+                              index == state.letterPathsModels.length - 1;
+
+                          return Container(
+                            height: letterModel.viewSize.height,
+                            width: letterModel.viewSize.width,
+                            margin: EdgeInsets.only(
+                              right: isLast ? 0 : widget.letterSpacing,
+                            ),
+                            child: GestureDetector(
                                 onPanStart: (details) {
                                   if (index == state.activeIndex) {
                                     tracingCubit.handlePanStart(
@@ -107,69 +147,41 @@ class _TracingCharsGameState extends State<TracingCharsGame> {
                                 },
                                 onPanEnd: (details) {},
                                 child: Stack(
-                                  // fit: StackFit.loose,
                                   clipBehavior: Clip.none,
-                                  // alignment: Alignment.b,
                                   children: [
                                     CustomPaint(
-                                      // isComplex: true,
-                                      size: tracingCubit.viewSize,
-              
+                                      size: letterModel.viewSize,
                                       painter: PhoneticsPainter(
-                                        strokeIndex: state
-                                            .letterPathsModels[index]
-                                            .strokeIndex,
-                                        indexPath: state
-                                            .letterPathsModels[index]
-                                            .letterIndex,
-                                        dottedPath: state
-                                            .letterPathsModels[index]
-                                            .dottedIndex,
-                                        letterColor: state
-                                            .letterPathsModels[index]
-                                            .outerPaintColor,
-                                        letterImage: state
-                                            .letterPathsModels[index]
-                                            .letterImage!,
-                                        paths: state
-                                            .letterPathsModels[index].paths,
-                                        currentDrawingPath: state
-                                            .letterPathsModels[index]
-                                            .currentDrawingPath,
-                                        pathPoints: state
-                                            .letterPathsModels[index]
+                                        strokeIndex: letterModel.strokeIndex,
+                                        indexPath: letterModel.letterIndex,
+                                        dottedPath: letterModel.dottedIndex,
+                                        letterColor:
+                                            letterModel.outerPaintColor,
+                                        letterImage: letterModel.letterImage!,
+                                        paths: letterModel.paths,
+                                        currentDrawingPath:
+                                            letterModel.currentDrawingPath,
+                                        pathPoints: letterModel
                                             .allStrokePoints
                                             .expand((p) => p)
                                             .toList(),
-                                        strokeColor: state
-                                            .letterPathsModels[index]
-                                            .innerPaintColor,
-                                        viewSize: state
-                                            .letterPathsModels[index]
-                                            .viewSize,
-                                        strokePoints: state
-                                                .letterPathsModels[index]
-                                                .allStrokePoints[
-                                            state.letterPathsModels[index]
-                                                .currentStroke],
-                                        strokeWidth: state
-                                            .letterPathsModels[index]
-                                            .strokeWidth,
-                                        dottedColor: state
-                                            .letterPathsModels[index]
-                                            .dottedColor,
-                                        indexColor: state
-                                            .letterPathsModels[index]
-                                            .indexColor,
-                                        indexPathPaintStyle: state
-                                            .letterPathsModels[index]
-                                            .indexPathPaintStyle,
-                                        dottedPathPaintStyle: state
-                                            .letterPathsModels[index]
-                                            .dottedPathPaintStyle,
+                                        strokeColor:
+                                            letterModel.innerPaintColor,
+                                        viewSize: letterModel.viewSize,
+                                        strokePoints: letterModel
+                                            .allStrokePoints[
+                                                letterModel.currentStroke],
+                                        strokeWidth: letterModel.strokeWidth,
+                                        dottedColor: letterModel.dottedColor,
+                                        indexColor: letterModel.indexColor,
+                                        indexPathPaintStyle:
+                                            letterModel.indexPathPaintStyle,
+                                        dottedPathPaintStyle:
+                                            letterModel.dottedPathPaintStyle,
                                       ),
                                     ),
-                                    if (state.activeIndex == index && widget.showAnchor)
+                                    if (state.activeIndex == index &&
+                                        widget.showAnchor)
                                       Positioned(
                                         top: state
                                             .letterPathsModels[
@@ -181,15 +193,11 @@ class _TracingCharsGameState extends State<TracingCharsGame> {
                                                 state.activeIndex]
                                             .anchorPos!
                                             .dx,
-                                        child: Image.asset(
-                                          'packages/tracing_game/assets/images/position_2_finger.png',
-                                          height: 50,
-                                        ),
+                                        child: _buildAnchor(context),
                                       ),
                                   ],
                                 ),
                               ),
-                            ),
                           );
                         },
                       ),
