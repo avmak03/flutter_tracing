@@ -9,16 +9,36 @@ class TracingGeometricShapesGame extends StatefulWidget {
     super.key,
     required this.traceGeoMetricShapeModels,
     this.loadingIndictor = const CircularProgressIndicator(),
-     this.showAnchor=true,
-           this.onTracingUpdated,
-          this.onGameFinished,
-          this.onCurrentTracingScreenFinished,
-
+    this.showAnchor = true,
+    this.onTracingUpdated,
+    this.onGameFinished,
+    this.onCurrentTracingScreenFinished,
+    this.shapeSpacing = 50,
+    this.targetGlyphHeight = 200,
+    this.anchorAssetPath,
+    this.anchorBuilder,
   });
   final List<TraceGeoMetricShapeModel> traceGeoMetricShapeModels;
   final Widget loadingIndictor;
-    final bool showAnchor;
-    
+  final bool showAnchor;
+
+  /// Horizontal gap, in logical pixels, between adjacent shapes.
+  final double shapeSpacing;
+
+  /// The tallest shape on a screen is scaled to this height, and every
+  /// other shape on that screen shares the same scale factor — see
+  /// TracingCubit.targetGlyphHeight for the full rationale.
+  final double targetGlyphHeight;
+
+  /// Asset path for the "pointing finger" anchor image. Defaults to the
+  /// package's bundled image if left null. Must resolve via your app's
+  /// own `Image.asset` (your pubspec assets), not the package's.
+  final String? anchorAssetPath;
+
+  /// Full control over the anchor visual — takes priority over
+  /// [anchorAssetPath] if provided.
+  final Widget Function(BuildContext context)? anchorBuilder;
+
 final Future<void> Function(int index)? onTracingUpdated;
 final  Future<void> Function(int index)? onGameFinished;
  final  Future<void> Function(int index)? onCurrentTracingScreenFinished;
@@ -37,6 +57,18 @@ class _TracingGeometricShapesGameState
     tracingCubit = TracingCubit(
       stateOfTracing: StateOfTracing.traceShapes,
       traceGeoMetricShapeModel: widget.traceGeoMetricShapeModels,
+      targetGlyphHeight: widget.targetGlyphHeight,
+    );
+  }
+
+  Widget _buildAnchor(BuildContext context) {
+    if (widget.anchorBuilder != null) {
+      return widget.anchorBuilder!(context);
+    }
+    return Image.asset(
+      widget.anchorAssetPath ??
+          'packages/tracing_game/assets/images/position_2_finger.png',
+      height: 50,
     );
   }
 
@@ -82,17 +114,21 @@ class _TracingGeometricShapesGameState
               Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.max,
-                    // crossAxisAlignment: CrossAxisAlignment.end
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: List.generate(
                       state.letterPathsModels.length,
                       (index) {
-            
-                        return FittedBox(
-                          fit: BoxFit.contain,
-                          child: Container(
-                            padding: EdgeInsets.only(right:index< state.letterPathsModels.length-1?50:0),
-                            child: GestureDetector(
+                        final shapeModel = state.letterPathsModels[index];
+                        final isLast =
+                            index == state.letterPathsModels.length - 1;
+
+                        return Container(
+                          height: shapeModel.viewSize.height,
+                          width: shapeModel.viewSize.width,
+                          padding: EdgeInsets.only(
+                            right: isLast ? 0 : widget.shapeSpacing,
+                          ),
+                          child: GestureDetector(
                               onPanStart: (details) {
                                 if (index == state.activeIndex) {
                                   tracingCubit
@@ -110,51 +146,30 @@ class _TracingGeometricShapesGameState
                                 clipBehavior: Clip.none,
                                 children: [
                                   CustomPaint(
-                                    size: tracingCubit.viewSize,
+                                    size: shapeModel.viewSize,
                                     painter: PhoneticsPainter(
-                                      strokeIndex: state
-                                          .letterPathsModels[index].strokeIndex,
-                                      indexPath: state
-                                          .letterPathsModels[index].letterIndex,
-                                      dottedPath: state
-                                          .letterPathsModels[index].dottedIndex,
-                                      letterColor: state
-                                          .letterPathsModels[index]
-                                          .outerPaintColor,
-                                      letterImage: state
-                                          .letterPathsModels[index]
-                                          .letterImage!,
-                                      paths:
-                                          state.letterPathsModels[index].paths,
-                                      currentDrawingPath: state
-                                          .letterPathsModels[index]
-                                          .currentDrawingPath,
-                                      pathPoints: state.letterPathsModels[index]
-                                          .allStrokePoints
+                                      strokeIndex: shapeModel.strokeIndex,
+                                      indexPath: shapeModel.letterIndex,
+                                      dottedPath: shapeModel.dottedIndex,
+                                      letterColor: shapeModel.outerPaintColor,
+                                      letterImage: shapeModel.letterImage!,
+                                      paths: shapeModel.paths,
+                                      currentDrawingPath:
+                                          shapeModel.currentDrawingPath,
+                                      pathPoints: shapeModel.allStrokePoints
                                           .expand((p) => p)
                                           .toList(),
-                                      strokeColor: state
-                                          .letterPathsModels[index]
-                                          .innerPaintColor,
-                                      viewSize: state
-                                          .letterPathsModels[index].viewSize,
-                                      strokePoints: state
-                                              .letterPathsModels[index]
-                                              .allStrokePoints[
-                                          state.letterPathsModels[index]
-                                              .currentStroke],
-                                      strokeWidth: state
-                                          .letterPathsModels[index].strokeWidth,
-                                      dottedColor: state
-                                          .letterPathsModels[index].dottedColor,
-                                      indexColor: state
-                                          .letterPathsModels[index].indexColor,
-                                      indexPathPaintStyle: state
-                                          .letterPathsModels[index]
-                                          .indexPathPaintStyle,
-                                      dottedPathPaintStyle: state
-                                          .letterPathsModels[index]
-                                          .dottedPathPaintStyle,
+                                      strokeColor: shapeModel.innerPaintColor,
+                                      viewSize: shapeModel.viewSize,
+                                      strokePoints: shapeModel.allStrokePoints[
+                                          shapeModel.currentStroke],
+                                      strokeWidth: shapeModel.strokeWidth,
+                                      dottedColor: shapeModel.dottedColor,
+                                      indexColor: shapeModel.indexColor,
+                                      indexPathPaintStyle:
+                                          shapeModel.indexPathPaintStyle,
+                                      dottedPathPaintStyle:
+                                          shapeModel.dottedPathPaintStyle,
                                     ),
                                   ),
                                     if (state.activeIndex == index && widget.showAnchor)
@@ -167,15 +182,11 @@ class _TracingGeometricShapesGameState
                                           .letterPathsModels[state.activeIndex]
                                           .anchorPos!
                                           .dx,
-                                      child: Image.asset(
-                                        'packages/tracing_game/assets/images/position_2_finger.png',
-                                        height: 50,
-                                      ),
+                                      child: _buildAnchor(context),
                                     ),
                                 ],
                               ),
                             ),
-                          ),
                         );
                       },
                     ),
