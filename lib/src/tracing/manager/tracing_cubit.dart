@@ -17,11 +17,27 @@ import '../../get_shape_helper/enum_of_arabic_and_numbers_letters.dart';
 part 'tracing_state.dart';
 
 class TracingCubit extends Cubit<TracingState> {
+  /// The tallest glyph on a screen is scaled to this height (logical px),
+  /// and every other glyph on that same screen shares the exact same
+  /// scale factor. This is what replaces the old "every letter forced
+  /// into its own fixed 200x200 box" behavior:
+  ///   - stroke thickness stays consistent across letters, because the
+  ///     whole glyph — outline included — is scaled by one shared number
+  ///     instead of each letter being independently stretched to fill
+  ///     an identical square,
+  ///   - short letters stay shorter than tall letters instead of both
+  ///     being blown up to the same visual height,
+  ///   - each letter's rendered box is now its own true (scaled) size,
+  ///     so downstream layout (spacing) reflects real glyph width
+  ///     instead of a uniform placeholder square.
+  final double targetGlyphHeight;
+
   TracingCubit({
     List<TraceWordModel>? traceWordModels,
     List<TraceGeoMetricShapeModel>? traceGeoMetricShapeModel,
     List<TraceCharsModel>? traceShapeModel,
     required StateOfTracing stateOfTracing,
+    this.targetGlyphHeight = 200,
   }) : super(TracingState(
           numberOfScreens: stateOfTracing == StateOfTracing.chars
               ? traceShapeModel!.length
@@ -40,6 +56,7 @@ class TracingCubit extends Cubit<TracingState> {
         )) {
     updateTheTraceLetter();
   }
+
   updateIndex() {
     int index = state.index;
     index++;
@@ -68,44 +85,89 @@ class TracingCubit extends Cubit<TracingState> {
     await loadAssets();
   }
 
-  final viewSize = const Size(200, 200);
   Future<void> loadAssets() async {
     emit(state.copyWith(drawingStates: DrawingStates.loading));
 
+    // --- Pass 1: parse every glyph's path once, and find the tallest
+    // non-space glyph on this screen. That height becomes the reference
+    // every other glyph on this screen is scaled against.
+    final List<Path> parsedLetterPaths = [];
+    double tallestGlyphHeight = 0;
+
+    for (final letterModel in state.traceLetter) {
+      final parsed = parseSvgPath(letterModel.letterPath);
+      parsedLetterPaths.add(parsed);
+
+      if (letterModel.isSpace) continue; // don't let a blank space's
+      // (possibly degenerate) bounds skew the shared scale.
+
+      final bounds = parsed.getBounds();
+      if (bounds.height > tallestGlyphHeight) {
+        tallestGlyphHeight = bounds.height;
+      }
+    }
+
+    // One scale for the entire screen/word. Guard against an empty or
+    // degenerate screen (all-space, or a zero-height glyph) so we never
+    // divide by zero.
+    final double screenScale =
+        tallestGlyphHeight > 0 ? targetGlyphHeight / tallestGlyphHeight : 1.0;
+
+    // --- Pass 2: transform every glyph using the SAME screenScale,
+    // each into its own natural-proportioned box (not a shared fixed
+    // square). This is the only structural change from the original
+    // per-letter-independent-scale approach — the actual fit/center/
+    // transform math for the letter, dotted guide, and index arrows is
+    // otherwise untouched, so their relative alignment to each other is
+    // preserved exactly as before.
     List<LetterPathsModel> model = [];
-    for (var e in state.traceLetter) {
-      final letterModel = e;
-      final parsedPath = parseSvgPath(letterModel.letterPath);
+    for (int i = 0; i < state.traceLetter.length; i++) {
+      final letterModel = state.traceLetter[i];
+      final parsedPath = parsedLetterPaths[i];
+
+      final Size perLetterViewSize;
+      if (letterModel.isSpace) {
+        // No visible glyph to measure — reserve a modest placeholder
+        // footprint; the actual word/letter gap on screen is controlled
+        // by `letterSpacing` / `wordSpacing` at the widget layer, not here.
+        perLetterViewSize = Size(targetGlyphHeight * 0.5, targetGlyphHeight);
+      } else {
+        final bounds = parsedPath.getBounds();
+        perLetterViewSize = Size(
+          bounds.width * screenScale,
+          bounds.height * screenScale,
+        );
+      }
 
       final dottedIndexPath = parseSvgPath(letterModel.indexPath);
       final dottedPath = parseSvgPath(letterModel.dottedPath);
 
       final transformedPath = _applyTransformation(
         parsedPath,
-        viewSize,
+        perLetterViewSize,
       );
 
       final dottedPathTransformed = _applyTransformationForOtherPathsDotted(
           dottedPath,
-          viewSize,
+          perLetterViewSize,
           letterModel.positionDottedPath,
           letterModel.scaledottedPath);
       final indexPathTransformed = _applyTransformationForOtherPathsIndex(
           dottedIndexPath,
-          viewSize,
+          perLetterViewSize,
           letterModel.positionIndexPath,
           letterModel.scaleIndexPath);
 
       final allStrokePoints = await _loadPointsFromJson(
         letterModel.pointsJsonFile,
-        viewSize,
+        perLetterViewSize,
       );
       final anchorPos =
           allStrokePoints.isNotEmpty ? allStrokePoints[0][0] : Offset.zero;
 
       model.add(LetterPathsModel(
           isSpace: letterModel.isSpace,
-          viewSize: letterModel.letterViewSize,
+          viewSize: perLetterViewSize,
           disableDivededStrokes: letterModel.disableDividedStrokes,
           strokeIndex: letterModel.strokeIndex,
           strokeWidth: letterModel.strokeWidth,
@@ -129,19 +191,23 @@ class TracingCubit extends Cubit<TracingState> {
     ));
   }
 
+  // --- Everything below is UNCHANGED from the original package. Each
+  // function still independently fits its own path into whatever
+  // `viewSize` it's handed — the only thing that changed is what caller
+  // passes in (see loadAssets above): a per-letter natural size derived
+  // from one shared screenScale, instead of the fixed Size(200, 200).
+
   Path _applyTransformation(
     Path path,
     Size viewSize,
   ) {
-    // Get the bounds of the original path
     final Rect originalBounds = path.getBounds();
     final Size originalSize = Size(originalBounds.width, originalBounds.height);
 
-    // Calculate the scale factor to fit the SVG within the view size
     final double scaleX = viewSize.width / originalSize.width;
     final double scaleY = viewSize.height / originalSize.height;
     double scale = math.min(scaleX, scaleY);
-    // Calculate the translation needed to center the path within the view size
+
     final double translateX =
         (viewSize.width - originalSize.width * scale) / 2 -
             originalBounds.left * scale;
@@ -149,13 +215,10 @@ class TracingCubit extends Cubit<TracingState> {
         (viewSize.height - originalSize.height * scale) / 2 -
             originalBounds.top * scale;
 
-    // Create a matrix for the transformation
-
     Matrix4 matrix = Matrix4.identity()
       ..scale(scale, scale)
       ..translate(translateX, translateY);
 
-    // Apply the transformation to the path
     return path.transform(matrix.storage);
   }
 
@@ -164,22 +227,18 @@ class TracingCubit extends Cubit<TracingState> {
     final Rect originalBounds = path.getBounds();
     final Size originalSize = Size(originalBounds.width, originalBounds.height);
 
-    // Calculate the scale factor to fit the SVG within the view size
     final double scaleX = viewSize.width / originalSize.width;
     final double scaleY = viewSize.height / originalSize.height;
 
     double scale = math.min(scaleX, scaleY);
     scale = pathscale == null ? scale : scale * pathscale;
 
-    // Calculate the translation needed to center the path within the view size
     final double translateX =
         (viewSize.width - originalSize.width * scale) / 2 -
             originalBounds.left * scale;
     final double translateY =
         (viewSize.height - originalSize.height * scale) / 2 -
             originalBounds.top * scale;
-
-    // Create a matrix for the transformation
 
     Matrix4 matrix = Matrix4.identity()
       ..scale(scale, scale)
@@ -190,31 +249,25 @@ class TracingCubit extends Cubit<TracingState> {
         ..scale(scale, scale)
         ..translate(translateX + size.width, translateY + size.height);
     }
-    // Apply the transformation to the path
     return path.transform(matrix.storage);
   }
 
   Path _applyTransformationForOtherPathsDotted(
       Path path, Size viewSize, Size? size, double? pathscale) {
-    // Get the bounds of the original path
     final Rect originalBounds = path.getBounds();
     final Size originalSize = Size(originalBounds.width, originalBounds.height);
 
-    // Calculate the scale factor to fit the SVG within the view size
     final double scaleX = viewSize.width / originalSize.width;
     final double scaleY = viewSize.height / originalSize.height;
     double scale = math.min(scaleX, scaleY);
     scale = pathscale == null ? scale : scale * pathscale;
 
-    // Calculate the translation needed to center the path within the view size
     final double translateX =
         (viewSize.width - originalSize.width * scale) / 2 -
             originalBounds.left * scale;
     final double translateY =
         (viewSize.height - originalSize.height * scale) / 2 -
             originalBounds.top * scale;
-
-    // Create a matrix for the transformation
 
     Matrix4 matrix = Matrix4.identity()
       ..scale(scale, scale)
@@ -225,7 +278,6 @@ class TracingCubit extends Cubit<TracingState> {
         ..scale(scale, scale)
         ..translate(translateX + size.width, translateY + size.height);
     }
-    // Apply the transformation to the path
     return path.transform(matrix.storage);
   }
 
