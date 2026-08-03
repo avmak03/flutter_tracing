@@ -8,6 +8,64 @@ import 'package:tracing_game/src/tracing/model/trace_model.dart';
 import 'package:tracing_game/tracing_game.dart';
 
 class TypeExtensionTracking {
+  PhonicsLetters _detectTheCurrentEnumFromPhonics({required String letter}) {
+    if (letter == 'a') {
+      return PhonicsLetters.a;
+    } else if (letter == 'q') {
+      return PhonicsLetters.q;
+    } else if (letter == 'w') {
+      return PhonicsLetters.w;
+    } else if (letter == 'e') {
+      return PhonicsLetters.e;
+    } else if (letter == 'r') {
+      return PhonicsLetters.r;
+    } else if (letter == 't') {
+      return PhonicsLetters.t;
+    } else if (letter == 'y') {
+      return PhonicsLetters.y;
+    } else if (letter == 'u') {
+      return PhonicsLetters.u;
+    } else if (letter == 'i') {
+      return PhonicsLetters.i;
+    } else if (letter == 'o') {
+      return PhonicsLetters.o;
+    } else if (letter == 'p') {
+      return PhonicsLetters.p;
+    } else if (letter == 's') {
+      return PhonicsLetters.s;
+    } else if (letter == 'd') {
+      return PhonicsLetters.d;
+    } else if (letter == 'f') {
+      return PhonicsLetters.f;
+    } else if (letter == 'g') {
+      return PhonicsLetters.g;
+    } else if (letter == 'h') {
+      return PhonicsLetters.h;
+    } else if (letter == 'j') {
+      return PhonicsLetters.j;
+    } else if (letter == 'k') {
+      return PhonicsLetters.k;
+    } else if (letter == 'l') {
+      return PhonicsLetters.l;
+    } else if (letter == 'z') {
+      return PhonicsLetters.z;
+    } else if (letter == 'x') {
+      return PhonicsLetters.x;
+    } else if (letter == 'c') {
+      return PhonicsLetters.c;
+    } else if (letter == 'v') {
+      return PhonicsLetters.v;
+    } else if (letter == 'b') {
+      return PhonicsLetters.b;
+    } else if (letter == 'n') {
+      return PhonicsLetters.n;
+    } else if (letter == 'm') {
+      return PhonicsLetters.m;
+    } else {
+      throw Exception('Unsupported character type for tracing.');
+    }
+  }
+
   List<TraceModel> getTracingData({
     List<TraceCharModel>? chars,
     TraceWordModel? word,
