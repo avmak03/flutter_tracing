@@ -10,8 +10,17 @@ class TraceCharsModel{
 class TraceCharModel {
 final  String char;
  final TraceShapeOptions traceShapeOptions;
+
+  /// Manual per-letter scale correction, default 1.0 (no correction).
+  /// Passed through to TraceModel.letterScaleOverride — see that field
+  /// for the full rationale. Set this from your app when you've
+  /// calibrated a letter (see the calibration screen) and want the
+  /// correction applied everywhere that letter is used.
+  final double letterScaleOverride;
+
   TraceCharModel({
    required this.char,
     this.traceShapeOptions= const TraceShapeOptions(),
+    this.letterScaleOverride = 1.0,
   });
 }
