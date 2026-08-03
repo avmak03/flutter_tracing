@@ -98,6 +98,10 @@ class TypeExtensionTracking {
                     indexColor: char.traceShapeOptions.indexColor,
                     dottedColor: char.traceShapeOptions.dottedColor,
                     letterScaleOverride: char.letterScaleOverride,
+                    positionDottedPath: char.dottedOffsetOverride,
+                    scaledottedPath: char.dottedScaleOverride,
+                    positionIndexPath: char.indexOffsetOverride,
+                    scaleIndexPath: char.indexScaleOverride,
                   ));
         } else if (_isUpperCasePhonicsCharacter(letters)) {
           final uppers =
@@ -111,6 +115,10 @@ class TypeExtensionTracking {
             indexColor: char.traceShapeOptions.indexColor,
             dottedColor: char.traceShapeOptions.dottedColor,
             letterScaleOverride: char.letterScaleOverride,
+            positionDottedPath: char.dottedOffsetOverride,
+            scaledottedPath: char.dottedScaleOverride,
+            positionIndexPath: char.indexOffsetOverride,
+            scaleIndexPath: char.indexScaleOverride,
           ));
         } else {
           throw Exception('Unsupported character type for tracing.');
