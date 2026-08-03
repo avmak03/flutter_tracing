@@ -116,19 +116,34 @@ class TracingCubit extends Cubit<TracingState> {
       final dottedIndexPath = parseSvgPath(letterModel.indexPath);
       final dottedPath = parseSvgPath(letterModel.dottedPath);
 
+      // Explicit fill rule for the letter's own filled shape. Several
+      // letters (b, t, ...) are built from overlapping/self-intersecting
+      // sub-paths; Flutter's default nonZero winding rule can leave
+      // slivers unfilled where those sub-paths' windings cancel out.
+      // evenOdd toggles fill per-crossing instead. Kept as its own
+      // isolated change (independent of the guide-path fix above) so
+      // it can be verified/reverted on its own if it turns out wrong.
+      parsedPath.fillType = PathFillType.evenOdd;
+
       final transformedPath = _applyTransformation(
         parsedPath,
         perLetterViewSize,
       );
 
-      final dottedPathTransformed = _applyTransformationForOtherPathsDotted(
+      // Guide paths are anchored to the LETTER's own bounds/scale, not
+      // independently re-fit — see the comment above
+      // _applyTransformationForOtherPaths for the full rationale and
+      // the verified transform math.
+      final dottedPathTransformed = _applyTransformationForOtherPaths(
           dottedPath,
-          perLetterViewSize,
+          bounds,
+          scale,
           letterModel.positionDottedPath,
           letterModel.scaledottedPath);
-      final indexPathTransformed = _applyTransformationForOtherPathsIndex(
+      final indexPathTransformed = _applyTransformationForOtherPaths(
           dottedIndexPath,
-          perLetterViewSize,
+          bounds,
+          scale,
           letterModel.positionIndexPath,
           letterModel.scaleIndexPath);
 
@@ -165,12 +180,10 @@ class TracingCubit extends Cubit<TracingState> {
     ));
   }
 
-  // --- Everything below is UNCHANGED from the original package. Each
-  // function still independently fits its own path into whatever
-  // `viewSize` it's handed — the only thing that changed is what caller
-  // passes in (see loadAssets above): a per-letter viewSize sized to
-  // that letter's own true aspect ratio at targetGlyphHeight, instead
-  // of the fixed Size(200, 200).
+  // _applyTransformation (letter shape) is UNCHANGED from the original
+  // package — still independently fits the letter's own path into
+  // whatever `viewSize` it's handed. _applyTransformationForOtherPaths
+  // (below it) is NOT unchanged — see its own doc comment for why.
 
   Path _applyTransformation(
     Path path,
@@ -197,62 +210,50 @@ class TracingCubit extends Cubit<TracingState> {
     return path.transform(matrix.storage);
   }
 
-  Path _applyTransformationForOtherPathsIndex(
-      Path path, Size viewSize, Size? size, double? pathscale) {
-    final Rect originalBounds = path.getBounds();
-    final Size originalSize = Size(originalBounds.width, originalBounds.height);
+  // _applyTransformationForOtherPaths (dotted spine + index arrows):
+  // anchored to the LETTER's own bounds/scale, not independently re-fit
+  // from the guide's own bounds. Verified transform rule (numerically
+  // checked against _applyTransformation's own working centering
+  // formula before writing this): `..scale(s)..translate(tx,ty)`
+  // produces `finalPoint = s*originalPoint + (tx,ty)` — the translate
+  // is a RAW, UNSCALED offset applied in already-scaled output pixels,
+  // not multiplied by scale. That means `offset` below behaves as a
+  // fixed number of visual pixels regardless of the letter's own
+  // scale — exactly what a calibration slider needs to behave
+  // predictably across differently-scaled letters.
+  //
+  // Base position: auto-center the guide's own bounding-box center
+  // onto the letter's own rendered center (letterImage's box spans
+  // [0, letterBounds.width*letterScale] x [0, letterBounds.height*
+  // letterScale], since _applyTransformation maps letterBounds.topLeft
+  // to the origin). `offset` and `extraScale` are then a nudge on top
+  // of that auto-centered guess — fresh calibration values, since the
+  // old position/scale numbers in the data were calibrated against a
+  // different (independent-refit) system and no longer apply.
+  Path _applyTransformationForOtherPaths(
+    Path path,
+    Rect letterBounds,
+    double letterScale,
+    Size? offset,
+    double? extraScale,
+  ) {
+    final Rect guideBounds = path.getBounds();
+    final double effectiveScale = letterScale * (extraScale ?? 1.0);
 
-    final double scaleX = viewSize.width / originalSize.width;
-    final double scaleY = viewSize.height / originalSize.height;
+    final double letterCenterFinalX = letterBounds.width * letterScale / 2;
+    final double letterCenterFinalY = letterBounds.height * letterScale / 2;
 
-    double scale = math.min(scaleX, scaleY);
-    scale = pathscale == null ? scale : scale * pathscale;
+    final double translateX = letterCenterFinalX -
+        effectiveScale * guideBounds.center.dx +
+        (offset?.width ?? 0);
+    final double translateY = letterCenterFinalY -
+        effectiveScale * guideBounds.center.dy +
+        (offset?.height ?? 0);
 
-    final double translateX =
-        (viewSize.width - originalSize.width * scale) / 2 -
-            originalBounds.left * scale;
-    final double translateY =
-        (viewSize.height - originalSize.height * scale) / 2 -
-            originalBounds.top * scale;
-
-    Matrix4 matrix = Matrix4.identity()
-      ..scale(scale, scale)
+    final Matrix4 matrix = Matrix4.identity()
+      ..scale(effectiveScale, effectiveScale)
       ..translate(translateX, translateY);
 
-    if (size != null) {
-      matrix = Matrix4.identity()
-        ..scale(scale, scale)
-        ..translate(translateX + size.width, translateY + size.height);
-    }
-    return path.transform(matrix.storage);
-  }
-
-  Path _applyTransformationForOtherPathsDotted(
-      Path path, Size viewSize, Size? size, double? pathscale) {
-    final Rect originalBounds = path.getBounds();
-    final Size originalSize = Size(originalBounds.width, originalBounds.height);
-
-    final double scaleX = viewSize.width / originalSize.width;
-    final double scaleY = viewSize.height / originalSize.height;
-    double scale = math.min(scaleX, scaleY);
-    scale = pathscale == null ? scale : scale * pathscale;
-
-    final double translateX =
-        (viewSize.width - originalSize.width * scale) / 2 -
-            originalBounds.left * scale;
-    final double translateY =
-        (viewSize.height - originalSize.height * scale) / 2 -
-            originalBounds.top * scale;
-
-    Matrix4 matrix = Matrix4.identity()
-      ..scale(scale, scale)
-      ..translate(translateX, translateY);
-
-    if (size != null) {
-      matrix = Matrix4.identity()
-        ..scale(scale, scale)
-        ..translate(translateX + size.width, translateY + size.height);
-    }
     return path.transform(matrix.storage);
   }
 
