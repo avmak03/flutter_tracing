@@ -116,34 +116,19 @@ class TracingCubit extends Cubit<TracingState> {
       final dottedIndexPath = parseSvgPath(letterModel.indexPath);
       final dottedPath = parseSvgPath(letterModel.dottedPath);
 
-      // Explicit fill rule for the letter's own filled shape. Several
-      // letters (b, t, ...) are built from overlapping/self-intersecting
-      // sub-paths; Flutter's default nonZero winding rule can leave
-      // slivers unfilled where those sub-paths' windings cancel out.
-      // evenOdd toggles fill per-crossing instead, which is the correct
-      // rule for this kind of traced-outline artwork.
-      parsedPath.fillType = PathFillType.evenOdd;
-
       final transformedPath = _applyTransformation(
         parsedPath,
         perLetterViewSize,
       );
-      transformedPath.fillType = PathFillType.evenOdd; // belt-and-suspenders
 
-      // Guide paths (dotted spine + index arrows) are anchored using
-      // the LETTER's own scale/bounds/centering, not independently
-      // re-fit from their own bounds — see the comment above
-      // _applyTransformationForOtherPaths for why.
       final dottedPathTransformed = _applyTransformationForOtherPathsDotted(
           dottedPath,
-          bounds,
-          scale,
+          perLetterViewSize,
           letterModel.positionDottedPath,
           letterModel.scaledottedPath);
       final indexPathTransformed = _applyTransformationForOtherPathsIndex(
           dottedIndexPath,
-          bounds,
-          scale,
+          perLetterViewSize,
           letterModel.positionIndexPath,
           letterModel.scaleIndexPath);
 
@@ -180,23 +165,12 @@ class TracingCubit extends Cubit<TracingState> {
     ));
   }
 
-  // _applyTransformation (letter shape) is UNCHANGED from the original
-  // package — still independently fits the letter's own path into
-  // whatever viewSize it's handed.
-  //
-  // _applyTransformationForOtherPathsIndex/Dotted (below) are NOT
-  // unchanged — they used to independently re-fit their own path's
-  // bounds into viewSize too, same as the letter. That's fine when
-  // viewSize is a fixed letter-independent square (the original
-  // package's behavior), but broke once viewSize started matching
-  // each letter's own natural aspect ratio: fitting the index/dotted
-  // path's own (differently-proportioned) bounds into a narrow target
-  // box picks a different effective scale than the letter got, which
-  // is what caused the guide-spine misalignment on narrow letters like
-  // 'i'. Fix: derive their transform directly from the LETTER's own
-  // scale + bounds, so they're geometrically anchored to the letter
-  // by construction; the hand-tuned position/scale corrections still
-  // layer on top as a fine-tune nudge, same as before.
+  // --- Everything below is UNCHANGED from the original package. Each
+  // function still independently fits its own path into whatever
+  // `viewSize` it's handed — the only thing that changed is what caller
+  // passes in (see loadAssets above): a per-letter viewSize sized to
+  // that letter's own true aspect ratio at targetGlyphHeight, instead
+  // of the fixed Size(200, 200).
 
   Path _applyTransformation(
     Path path,
@@ -224,17 +198,22 @@ class TracingCubit extends Cubit<TracingState> {
   }
 
   Path _applyTransformationForOtherPathsIndex(
-      Path path, Rect letterBounds, double letterScale, Size? size, double? pathscale) {
-    final double scale = pathscale == null ? letterScale : letterScale * pathscale;
+      Path path, Size viewSize, Size? size, double? pathscale) {
+    final Rect originalBounds = path.getBounds();
+    final Size originalSize = Size(originalBounds.width, originalBounds.height);
 
-    // Same base translate as the letter's own centering (see
-    // _applyTransformation above), computed from the LETTER's bounds —
-    // this anchors the guide to the letter by construction. `size`
-    // (positionIndexPath) layers an additional hand-tuned nudge on top,
-    // composed the same way as before so it still scales consistently
-    // with everything else.
-    final double translateX = -letterBounds.left * scale;
-    final double translateY = -letterBounds.top * scale;
+    final double scaleX = viewSize.width / originalSize.width;
+    final double scaleY = viewSize.height / originalSize.height;
+
+    double scale = math.min(scaleX, scaleY);
+    scale = pathscale == null ? scale : scale * pathscale;
+
+    final double translateX =
+        (viewSize.width - originalSize.width * scale) / 2 -
+            originalBounds.left * scale;
+    final double translateY =
+        (viewSize.height - originalSize.height * scale) / 2 -
+            originalBounds.top * scale;
 
     Matrix4 matrix = Matrix4.identity()
       ..scale(scale, scale)
@@ -249,11 +228,21 @@ class TracingCubit extends Cubit<TracingState> {
   }
 
   Path _applyTransformationForOtherPathsDotted(
-      Path path, Rect letterBounds, double letterScale, Size? size, double? pathscale) {
-    final double scale = pathscale == null ? letterScale : letterScale * pathscale;
+      Path path, Size viewSize, Size? size, double? pathscale) {
+    final Rect originalBounds = path.getBounds();
+    final Size originalSize = Size(originalBounds.width, originalBounds.height);
 
-    final double translateX = -letterBounds.left * scale;
-    final double translateY = -letterBounds.top * scale;
+    final double scaleX = viewSize.width / originalSize.width;
+    final double scaleY = viewSize.height / originalSize.height;
+    double scale = math.min(scaleX, scaleY);
+    scale = pathscale == null ? scale : scale * pathscale;
+
+    final double translateX =
+        (viewSize.width - originalSize.width * scale) / 2 -
+            originalBounds.left * scale;
+    final double translateY =
+        (viewSize.height - originalSize.height * scale) / 2 -
+            originalBounds.top * scale;
 
     Matrix4 matrix = Matrix4.identity()
       ..scale(scale, scale)
