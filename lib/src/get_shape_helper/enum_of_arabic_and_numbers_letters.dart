@@ -337,6 +337,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.54,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.nlowerShapeDotted,
@@ -358,6 +359,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.62,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.eLowerShapeDotted,
@@ -379,6 +381,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.68,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
               dottedPath: EnglishShapePaths2.wBigShapeDotted,
@@ -400,6 +403,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.72,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.dLowerShapeDotted,
@@ -421,6 +425,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.58,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
               dottedPath: EnglishShapePaths2.oShapeBigShapeDotted,
@@ -441,6 +446,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.66,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.gLowrShapeDotted,
@@ -461,6 +467,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.76,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.fLowerShapeDotted,
@@ -481,6 +488,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.84,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
               dottedPath: EnglishShapePaths2.blowerShapeDotted,
@@ -501,6 +509,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.56,
               dottedPath: EnglishShapePaths2.lLowerShapeDotted,
               strokeWidth: 90,
               disableDividedStrokes: true,
@@ -523,6 +532,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.58,
               dottedPath: EnglishShapePaths2.uLowerShapeDotted,
               strokeWidth: 80,
               disableDividedStrokes: true,
@@ -545,6 +555,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.88,
               dottedPath: EnglishShapePaths2.jlowerShapeDotetd,
               strokeWidth: 50,
               disableDividedStrokes: true,
@@ -567,6 +578,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.62,
               dottedPath: EnglishShapePaths2.hLowerShapeDotted,
               strokeWidth: 50,
               disableDividedStrokes: true,
@@ -589,6 +601,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.66,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
               dottedPath: ShapePaths.sDotted,
@@ -608,6 +621,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.6,
               dottedPath: ShapePaths.aDotted,
               dottedColor: AppColorPhonetics.white,
               indexColor: AppColorPhonetics.grey,
@@ -627,6 +641,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.54,
               dottedPath: ShapePaths.mDotted,
               strokeWidth: 65,
               dottedColor: AppColorPhonetics.white,
@@ -645,6 +660,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.62,
               dottedPath: ShapePaths.kshapeDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.stroke,
@@ -665,6 +681,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.64,
               dottedPath: ShapePaths.qshapeDotted,
               dottedPathPaintStyle: PaintingStyle.stroke,
               indexPathPaintStyle: PaintingStyle.fill,
@@ -684,6 +701,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.64,
               dottedPath: ShapePaths.vShapeDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
@@ -703,6 +721,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.6,
               dottedPath: ShapePaths.xDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
@@ -723,6 +742,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.7,
               dottedPath: ShapePaths.yshapeDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
@@ -742,6 +762,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.62,
               dottedPath: ShapePaths.zShapeDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
@@ -761,6 +782,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.66,
               dottedPath: ShapePaths.tshapeDotted,
               dottedColor: AppColorPhonetics.white,
               indexColor: AppColorPhonetics.grey,
@@ -781,6 +803,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.62,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
               dottedPath: ShapePaths.cshapeDoted,
@@ -801,6 +824,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.64,
               dottedPath: ShapePaths.rShapeDotted,
               indexPathPaintStyle: PaintingStyle.fill,
               dottedPathPaintStyle: PaintingStyle.fill,
@@ -820,6 +844,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.72,
               dottedPath: ShapePaths.iShapeDotetd,
               dottedPathPaintStyle: PaintingStyle.fill,
               indexPathPaintStyle: PaintingStyle.fill,
@@ -840,6 +865,7 @@ class TypeExtensionTracking {
         return [
           TraceModel(
               letterViewSize: sizeOfLetter,
+              letterScaleOverride: 0.64,
               dottedPath: ShapePaths.pShapeDotted,
               dottedPathPaintStyle: PaintingStyle.stroke,
               indexPathPaintStyle: PaintingStyle.fill,
