@@ -17,19 +17,25 @@ import '../../get_shape_helper/enum_of_arabic_and_numbers_letters.dart';
 part 'tracing_state.dart';
 
 class TracingCubit extends Cubit<TracingState> {
-  /// The tallest glyph on a screen is scaled to this height (logical px),
-  /// and every other glyph on that same screen shares the exact same
-  /// scale factor. This is what replaces the old "every letter forced
-  /// into its own fixed 200x200 box" behavior:
-  ///   - stroke thickness stays consistent across letters, because the
-  ///     whole glyph — outline included — is scaled by one shared number
-  ///     instead of each letter being independently stretched to fill
-  ///     an identical square,
-  ///   - short letters stay shorter than tall letters instead of both
-  ///     being blown up to the same visual height,
-  ///   - each letter's rendered box is now its own true (scaled) size,
-  ///     so downstream layout (spacing) reflects real glyph width
-  ///     instead of a uniform placeholder square.
+  /// Every letter is scaled to this height (logical px), using ONLY its
+  /// own bounds — not compared against other letters on the same screen.
+  /// Comparing raw SVG bounding-box sizes ACROSS different letters isn't
+  /// reliable with this asset set (the source SVGs weren't authored on a
+  /// shared canvas/scale per letter), so this does NOT do cross-letter
+  /// scale-sharing. What it does do, relative to the original package:
+  ///   - every letter still ends up a consistent height (like the
+  ///     original's fixed-box behavior), avoiding the "some letters
+  ///     tiny, some huge" breakage that a shared cross-letter scale
+  ///     produces with this data,
+  ///   - but each letter's box WIDTH is computed from its own true
+  ///     aspect ratio at that height, instead of being squashed into a
+  ///     fixed square — so downstream spacing reflects each letter's
+  ///     real relative width (e.g. "i" narrower than "m").
+  /// True cross-letter stroke-width matching (e.g. K's legs exactly as
+  /// thick as I's stem) isn't achievable this way — that would require
+  /// the source SVGs themselves to be authored/recalibrated on one
+  /// consistent scale, which is a data problem, not something this
+  /// transform step can fix.
   final double targetGlyphHeight;
 
   TracingCubit({
@@ -88,53 +94,23 @@ class TracingCubit extends Cubit<TracingState> {
   Future<void> loadAssets() async {
     emit(state.copyWith(drawingStates: DrawingStates.loading));
 
-    // --- Pass 1: parse every glyph's path once, and find the tallest
-    // non-space glyph on this screen. That height becomes the reference
-    // every other glyph on this screen is scaled against.
-    final List<Path> parsedLetterPaths = [];
-    double tallestGlyphHeight = 0;
-
-    for (final letterModel in state.traceLetter) {
-      final parsed = parseSvgPath(letterModel.letterPath);
-      parsedLetterPaths.add(parsed);
-
-      // isSpace is just "space follows this letter" — it's a real glyph
-      // and belongs in the shared-scale calculation like any other.
-      final bounds = parsed.getBounds();
-      if (bounds.height > tallestGlyphHeight) {
-        tallestGlyphHeight = bounds.height;
-      }
-    }
-
-    // One scale for the entire screen/word. Guard against an empty or
-    // degenerate screen (all-space, or a zero-height glyph) so we never
-    // divide by zero.
-    final double screenScale =
-        tallestGlyphHeight > 0 ? targetGlyphHeight / tallestGlyphHeight : 1.0;
-
-    // --- Pass 2: transform every glyph using the SAME screenScale,
-    // each into its own natural-proportioned box (not a shared fixed
-    // square). This is the only structural change from the original
-    // per-letter-independent-scale approach — the actual fit/center/
-    // transform math for the letter, dotted guide, and index arrows is
-    // otherwise untouched, so their relative alignment to each other is
-    // preserved exactly as before.
+    // Each letter is scaled using ONLY its own bounds — see the
+    // targetGlyphHeight doc comment above for why cross-letter
+    // comparison isn't safe with this asset set. Scaling purely by
+    // height (rather than the original's min(scaleX, scaleY) fit into
+    // a fixed square) means the box width comes out as this letter's
+    // true aspect ratio at that height, instead of being forced square.
     List<LetterPathsModel> model = [];
-    for (int i = 0; i < state.traceLetter.length; i++) {
-      final letterModel = state.traceLetter[i];
-      final parsedPath = parsedLetterPaths[i];
-
-      // `isSpace` marks a real letter that happens to be followed by a
-      // space in the word string — it is NOT a blank/placeholder glyph.
-      // It carries real letterPath/dottedPath/indexPath/stroke data just
-      // like any other letter; the only thing that reads this flag is
-      // the widget layer, which adds extra margin after this letter's
-      // box (see wordSpacing in tracing_word_game.dart). So it must be
-      // sized and transformed exactly like every other letter here.
+    for (final letterModel in state.traceLetter) {
+      final parsedPath = parseSvgPath(letterModel.letterPath);
       final bounds = parsedPath.getBounds();
+
+      final double scale = bounds.height > 0
+          ? (targetGlyphHeight / bounds.height) * letterModel.letterScaleOverride
+          : 1.0;
       final Size perLetterViewSize = Size(
-        bounds.width * screenScale,
-        bounds.height * screenScale,
+        bounds.width * scale,
+        bounds.height * scale,
       );
 
       final dottedIndexPath = parseSvgPath(letterModel.indexPath);
@@ -192,8 +168,9 @@ class TracingCubit extends Cubit<TracingState> {
   // --- Everything below is UNCHANGED from the original package. Each
   // function still independently fits its own path into whatever
   // `viewSize` it's handed — the only thing that changed is what caller
-  // passes in (see loadAssets above): a per-letter natural size derived
-  // from one shared screenScale, instead of the fixed Size(200, 200).
+  // passes in (see loadAssets above): a per-letter viewSize sized to
+  // that letter's own true aspect ratio at targetGlyphHeight, instead
+  // of the fixed Size(200, 200).
 
   Path _applyTransformation(
     Path path,
